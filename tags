@@ -1,0 +1,41 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+UNOCard	UNO.cpp	/^    UNOCard ():color(-1),prior(-1),num(15),desc("UNO Logo"),active(1),power(0){}$/;"	f	class:UNOCard
+UNOCard	UNO.cpp	/^    UNOCard (int c, int p, int n, string d):color (c), prior (p), num (n),$/;"	f	class:UNOCard
+UNOCard	UNO.cpp	/^class UNOCard$/;"	c	file:
+UNOPlayer	UNO.cpp	/^UNOPlayer(string f):flag(f){}$/;"	f	class:UNOPlayer
+UNOPlayer	UNO.cpp	/^class UNOPlayer$/;"	c	file:
+active	UNO.cpp	/^  int active;\/\/still active, just for skip reverse +2 +4 wild$/;"	m	class:UNOCard	file:
+color	UNO.cpp	/^  int color;			\/\/R\/Y\/B\/G$/;"	m	class:UNOCard	file:
+desc	UNO.cpp	/^  string desc;			\/\/number skip reverse +2 wild +4$/;"	m	class:UNOCard	file:
+easyShow	UNO.cpp	/^  void UNOCard::easyShow (string prefix)$/;"	f	class:UNOCard
+flag	UNO.cpp	/^string flag;$/;"	m	class:UNOPlayer	file:
+g_UNO	UNO.cpp	/^vector < UNOCard > g_UNO;$/;"	v
+getActive	UNO.cpp	/^int getActive(){return active;}$/;"	f	class:UNOCard
+getColor	UNO.cpp	/^int getColor(){return color;}$/;"	f	class:UNOCard
+getDesc	UNO.cpp	/^string getDesc(){return desc;}$/;"	f	class:UNOCard
+getNum	UNO.cpp	/^int getNum(){return num;}$/;"	f	class:UNOCard
+getPower	UNO.cpp	/^int getPower(){return power;}$/;"	f	class:UNOCard
+getPrior	UNO.cpp	/^int getPrior(){return prior;}$/;"	f	class:UNOCard
+gui	UNO.cpp	/^void gui(UNOPlayer &A, UNOPlayer &B, UNOPlayer &C, UNOPlayer &D){$/;"	f
+init	UNO.cpp	/^init ()$/;"	f
+last_unoCard	UNO.cpp	/^UNOCard last_unoCard;$/;"	m	class:UNOPlayer	file:
+main	UNO.cpp	/^int main ()$/;"	f
+main	test.cpp	/^main ()$/;"	f
+num	UNO.cpp	/^  int num;			\/\/0-9 10 11 12 13 14 15(UNOLogo)$/;"	m	class:UNOCard	file:
+power	UNO.cpp	/^  int power;\/\/累积+2 +4$/;"	m	class:UNOCard	file:
+prior	UNO.cpp	/^  int prior;			\/\/prior: 4 3 2 1 0 -1$/;"	m	class:UNOCard	file:
+run	UNO.cpp	/^int UNOPlayer::run(UNOCard &global_last_unoCard){$/;"	f	class:UNOPlayer
+setActive	UNO.cpp	/^void setActive(int Active){active=Active;}$/;"	f	class:UNOCard
+setColor	UNO.cpp	/^void setColor(int c){color=c;return;}$/;"	f	class:UNOCard
+setPower	UNO.cpp	/^void setPower(int newPower){power=newPower;}$/;"	f	class:UNOCard
+show	UNO.cpp	/^  void show (string prefix = "")$/;"	f	class:UNOCard
+showUNO	UNO.cpp	/^UNOCard::showUNO (int color, int N, string prefix)$/;"	f	class:UNOCard
+showUNO	test.cpp	/^showUNO (int color, int N)$/;"	f
+showUNO_color	UNO.cpp	/^UNOCard::showUNO_color (int color, string S, string prefix)$/;"	f	class:UNOCard
+showUNO_color	test.cpp	/^showUNO_color (int color, string S)$/;"	f
+unoCards	UNO.cpp	/^    vector < UNOCard > unoCards;$/;"	m	class:UNOPlayer	file:

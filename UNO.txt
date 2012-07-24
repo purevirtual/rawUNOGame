@@ -1,0 +1,8 @@
+design:
+优先级：4 red yellow blue green 0-9 各19张 0--1 other 2
+优先级：3 skip 阻挡牌 8张 R/Y/B/G 2
+优先级：2 Reverse 反转牌 8 R/Y/B/G 2
+优先级：1 2Deaw 8 R/Y/B/G 2
+优先级：0 wild 万能牌 4
+优先级：-1 4Deaw 王牌 4
+总计 19*4 + 8 + 8 + 8 + 4 + 4=108张牌

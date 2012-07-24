@@ -1,0 +1,758 @@
+/*design:
+优先级：4 red yellow blue green 0-9 各19张 0--1 other 2
+优先级：3 skip 阻挡牌 8张 R/Y/B/G 2
+优先级：2 Reverse 反转牌 8 R/Y/B/G 2
+优先级：1 2Deaw 8 R/Y/B/G 2
+优先级：0 wild 万能牌 4
+优先级：-1 4Deaw 王牌 4
+总计 19*4 + 8 + 8 + 8 + 4 + 4=108张牌
+*/
+/*
+*@author:Yang Chao
+*@Date: Tue Jul 17 13:05:40
+*@Desc: A simple simulator to play the game UNO!
+*/
+/*
+
+	@@@       @@@     @@@      @@        @@@@@@              
+	@@@       @@@     @@@@     @@       @@@   @@             
+	@@@       @@@     @@ @@    @@      @@      @@            
+	@@@       @@@     @@  @@   @@     @@        @@           
+	@@@       @@@     @@   @@  @@     @@        @@           
+	@@@       @@@     @@    @@ @@      @@       @@           
+	 @@@      @@@     @@     @@@@       @@     @@            
+	   @@@@@@@        @@      @@@        @@@@@@@             
+*/
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <cstdio>
+#include <cstdlib>
+#include "voice.h"
+#include "UNOWin.h"
+using namespace std;
+
+class UNOCard
+{
+  int color;			//R/Y/B/G
+  int prior;			//prior: 4 3 2 1 0 -1
+  int num;			//0-9 10:skip 11:reverse 12:+2D 13:wild 14:+4D 15(UNOLogo)
+  string desc;			//number skip reverse +2 wild +4
+  int active;			//still active, just for skip reverse +2 +4 wild
+  int power;			//累积+2 +4
+  void showUNO_color (int color, string S, string prefix = "");
+  void showUNO (int color, int N, string prefix = "");
+public:
+    UNOCard ():color (-1), prior (-1), num (15), desc ("UNO Logo"),
+    active (1), power (0)
+  {
+    if (num == 12)
+      power = 2;
+    else if (num == 14)
+      power = 4;
+  }
+  UNOCard (int c, int p, int n, string d):color (c), prior (p), num (n),
+    desc (d), active (1), power (0)
+  {
+    if (num == 12)
+      power = 2;
+    else if (num == 14)
+      power = 4;
+  }
+//(*^__^*) make voice
+  void emitVoice ()
+  {
+    switch (color)
+      {
+      case 'R':
+	outputVoice ((char *) "rawVoice/red.raw", 0.5);
+	break;
+      case 'Y':
+	outputVoice ((char *) "rawVoice/yellow.raw", 0.5);
+	break;
+      case 'B':
+	outputVoice ((char *) "rawVoice/blue.raw", 0.5);
+	break;
+      case 'G':
+	outputVoice ((char *) "rawVoice/green.raw", 0.5);
+	break;
+      default:
+	break;			//do nothing
+      }
+    switch (num)
+      {
+      case 0:
+	outputVoice ((char *) "rawVoice/0.raw", 0.5);
+	break;
+      case 1:
+	outputVoice ((char *) "rawVoice/1.raw", 0.5);
+	break;
+      case 2:
+	outputVoice ((char *) "rawVoice/2.raw", 0.5);
+	break;
+      case 3:
+	outputVoice ((char *) "rawVoice/3.raw", 0.5);
+	break;
+      case 4:
+	outputVoice ((char *) "rawVoice/4.raw", 0.5);
+	break;
+      case 5:
+	outputVoice ((char *) "rawVoice/5.raw", 0.5);
+	break;
+      case 6:
+	outputVoice ((char *) "rawVoice/6.raw", 0.5);
+	break;
+      case 7:
+	outputVoice ((char *) "rawVoice/7.raw", 0.5);
+	break;
+      case 8:
+	outputVoice ((char *) "rawVoice/8.raw", 0.5);
+	break;
+      case 9:
+	outputVoice ((char *) "rawVoice/9.raw", 0.5);
+	break;
+      case 10:
+	outputVoice ((char *) "rawVoice/skip.raw", 0.5);
+	break;
+      case 11:
+	outputVoice ((char *) "rawVoice/reverse.raw", 0.5);
+	break;
+      case 12:
+	outputVoice ((char *) "rawVoice/+2.raw", 0.5);
+	break;
+      case 13:
+	outputVoice ((char *) "rawVoice/wild.raw", 0.5);
+	break;
+      case 14:
+	outputVoice ((char *) "rawVoice/+4.raw", 0.5);
+	break;
+      case 15:
+	outputVoice ((char *) "rawVoice/none.raw", 0.5);
+	break;
+      }
+  }
+  void easyShow (string prefix = "");
+  void show (string prefix = "")
+  {
+    showUNO (color, num, prefix);
+  }
+  void setColor (int c)
+  {
+    color = c;
+    return;
+  }
+  void setPower (int newPower)
+  {
+    power = newPower;
+  }
+  void setActive (int Active)
+  {
+    active = Active;
+  }
+  int getPower ()
+  {
+    return power;
+  }
+  int getActive ()
+  {
+    return active;
+  }
+  int getColor ()
+  {
+    return color;
+  }
+  int getPrior ()
+  {
+    return prior;
+  }
+  int getNum ()
+  {
+    return num;
+  }
+  string getDesc ()
+  {
+    return desc;
+  }
+};
+
+class UNOPlayer
+{
+public:
+  vector < UNOCard > unoCards;
+  UNOCard last_unoCard;
+  string flag;
+    UNOPlayer (string f):flag (f)
+  {
+  }
+  int run (UNOCard & global_last_unoCard);
+};
+
+vector < UNOCard > g_UNO;
+UNOCard UNOLogo (-1, -1, 15, "UNO Logo");
+UNOCard g_last_unoCard (-1, -1, 15, "UNO Logo");
+
+void init ();
+void gui (UNOPlayer & A, UNOPlayer & B, UNOPlayer & C, UNOPlayer & D);
+
+int
+main ()
+{
+//初始化，洗牌
+  init ();
+//发牌
+//arrange(4, 8);//4个人8张牌
+////////////////////////////////////////////////////////////////////
+  UNOPlayer A ("A");		//it's you , seq is A->B->C->D->A
+  UNOPlayer B ("B");
+  UNOPlayer C ("C");
+  UNOPlayer D ("D");
+  vector < UNOCard >::iterator it;
+  int i = 0;
+  vector < UNOPlayer * >UNOPlayer_list;
+  UNOPlayer_list.push_back (&A);
+  UNOPlayer_list.push_back (&B);
+  UNOPlayer_list.push_back (&C);
+  UNOPlayer_list.push_back (&D);
+  vector < UNOPlayer * >::iterator it_list;
+  for (it_list = UNOPlayer_list.begin (); it_list != UNOPlayer_list.end ();
+       it_list++)
+    {
+      for (i = 0, it = g_UNO.begin (); i < 8 && it != g_UNO.end (); i++, it++)
+	(*it_list)->unoCards.push_back (*it);
+      for (i = 0, it = g_UNO.begin (); i < 8 && it != g_UNO.end (); i++, it++)
+	{
+	  g_UNO.erase (it);
+	}
+      (*it_list)->last_unoCard = UNOLogo;
+    }
+  gui (A, B, C, D);
+////////////////////////////////////////////////////////////////////
+//发牌完毕，准备出牌
+//A first
+  string input;
+  int flag = 1;
+  while (flag)
+    {
+      for (it_list = UNOPlayer_list.begin ();
+	   it_list != UNOPlayer_list.end (); it_list++)
+	{
+	  if (A.flag == (*it_list)->flag)
+	    {
+////////////如果没有+2 +4的合适牌，于是如果前面是+2 +4你就悲剧了
+	      if ((g_last_unoCard.getNum () == 12
+		   || g_last_unoCard.getNum () == 14)
+		  && g_last_unoCard.getActive ())
+		{
+		  vector < UNOCard >::iterator temp_it;
+		  int addFlag = 0;
+		  for (temp_it = A.unoCards.begin ();
+		       temp_it != A.unoCards.end (); temp_it++)
+		    {
+		      if (((*temp_it).getNum () == g_last_unoCard.getNum ())
+			  || ((*temp_it).getNum () ==
+			      g_last_unoCard.getNum () + 2))
+			{
+			  int tempPower = g_last_unoCard.getPower ();
+			  tempPower += (*temp_it).getNum ();
+			  g_last_unoCard = *temp_it;
+			  g_last_unoCard.setPower (tempPower);
+			  A.unoCards.erase (temp_it);
+			  addFlag = 1;
+			  break;
+			}
+		    }
+		  if (!addFlag)
+		    {
+		      g_last_unoCard.setActive (0);
+		      for (int i = 0;
+			   i < g_last_unoCard.getPower () && !g_UNO.empty ();
+			   i++)
+			{
+			  A.unoCards.push_back (*g_UNO.begin ());
+			  g_UNO.erase (g_UNO.begin ());
+			}
+		      continue;
+		    }
+		}
+//////////////////////////////////////////////////////////
+	      if (g_last_unoCard.getNum () == 10
+		  && g_last_unoCard.getActive ())
+		{
+		  g_last_unoCard.setActive (0);
+		  continue;
+		}
+	      outputVoice ((char *) "rawVoice/itsYourTurn.raw", 0.5);
+	      cin >> input;
+//'q'输入表示抓牌 
+	      if (input.c_str ()[0] == 'q')
+		{
+		  A.unoCards.push_back (*g_UNO.begin ());
+		  g_UNO.erase (g_UNO.begin ());
+		}
+//有输入表示出牌 
+	      else
+		{
+		  A.last_unoCard = A.unoCards[atoi (input.c_str ())];
+		  A.unoCards.erase (A.unoCards.begin () +
+				    atoi (input.c_str ()));
+		  g_last_unoCard = A.last_unoCard;
+		  if (A.unoCards.size () == 0)
+		    {
+		      flag = 0;
+		      break;
+		    }
+		}
+	      gui (A, B, C, D);
+	    }
+	  else
+	    {			//B C D
+//skip
+	      if (g_last_unoCard.getNum () == 10
+		  && g_last_unoCard.getActive ())
+		{
+		  g_last_unoCard.setActive (0);
+		  continue;
+		}
+	      (*it_list)->run (g_last_unoCard);
+	      if ((*it_list)->unoCards.size () == 0)
+		{
+		  flag = 0;
+		  break;
+		}
+	      gui (A, B, C, D);
+	    }
+	  g_last_unoCard.emitVoice ();
+/////////////////////////////////////////////////////////////////////////
+//由于转向，在末尾实现比较方便
+//reverse
+	  if (g_last_unoCard.getNum () == 11 && g_last_unoCard.getActive ())
+	    {
+	      string tempFlag = (*it_list)->flag;
+	      reverse (UNOPlayer_list.begin (), UNOPlayer_list.end ());
+	      for (it_list = UNOPlayer_list.begin ();
+		   it_list != UNOPlayer_list.end (); it_list++)
+		{
+		  if ((*it_list)->flag == tempFlag)
+		    break;
+		}
+
+	      g_last_unoCard.setActive (0);
+	    }
+//////////////////////////////////////////////////////////////////////
+//由于有了发声延时，就不需要这个了
+	  //sleep (1);		//视觉暂停，否则会以为它们一次出几张
+	}
+    }
+  outputVoice ((char *) "rawVoice/unoCheer.raw", 0.5);
+  UNOWin ();
+  return 0;
+}
+
+void
+init ()
+{
+  int i;
+  for (i = 0; i < 1 * 19; i++)
+    g_UNO.push_back (UNOCard ('R', 4, i % 10, "!!"));
+  for (i = 0; i < 1 * 19; i++)
+    g_UNO.push_back (UNOCard ('Y', 4, i % 10, "!!"));
+  for (i = 0; i < 1 * 19; i++)
+    g_UNO.push_back (UNOCard ('B', 4, i % 10, "!!"));
+  for (i = 0; i < 1 * 19; i++)
+    g_UNO.push_back (UNOCard ('G', 4, i % 10, "!!"));
+
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('R', 3, 10, "skip"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('Y', 3, 10, "skip"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('B', 3, 10, "skip"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('G', 3, 10, "skip"));
+
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('R', 2, 11, "reverse"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('Y', 2, 11, "reverse"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('B', 2, 11, "reverse"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('G', 2, 11, "reverse"));
+
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('R', 1, 12, "+2D"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('Y', 1, 12, "+2D"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('B', 1, 12, "+2D"));
+  for (i = 0; i < 2; i++)
+    g_UNO.push_back (UNOCard ('G', 1, 12, "+2D"));
+
+  for (i = 0; i < 4; i++)
+    g_UNO.push_back (UNOCard (-1, 0, 13, "wild"));
+
+  for (i = 0; i < 4; i++)
+    g_UNO.push_back (UNOCard (-1, -1, 14, "+4D"));
+
+  int k;
+  srandom (time (NULL));
+  random_shuffle (g_UNO.begin (), g_UNO.end ());
+/*Debug  
+vector < UNOCard >::iterator it;
+  for (it = g_UNO.begin (); it < g_UNO.end (); it++)
+    {
+      it->show ();
+    }
+  */ return;
+}
+
+void
+UNOCard::showUNO (int color, int N, string prefix)
+{
+  if (N >= 0 && N <= 9)
+    {
+      char temp[3];
+      sprintf (temp, "%d", N);
+      showUNO_color (color, string (temp), prefix);
+    }
+  else if (N == 10)
+    showUNO_color (color, "skip", prefix);
+  else if (N == 11)
+    showUNO_color (color, "reverse", prefix);
+  else if (N == 12)
+    showUNO_color (color, "+2", prefix);
+  else if (N == 13)
+    showUNO_color (color, "wild", prefix);
+  else if (N == 14)
+    showUNO_color (color, "+4", prefix);
+  else if (N == 15)
+    showUNO_color (color, "UNO", prefix);
+}
+
+void
+UNOCard::easyShow (string prefix)
+{
+  if (num >= 0 && num <= 9)
+    {
+      switch (color)
+	{
+	case ('R'):
+	  cout << prefix << "\033[31m " << num << '\t' << "\033[0m";
+	  break;
+	case ('Y'):
+	  cout << prefix << "\033[33m " << num << '\t' << "\033[0m";
+	  break;
+	case ('B'):
+	  cout << prefix << "\033[34m " << num << '\t' << "\033[0m";
+	  break;
+	case ('G'):
+	  cout << prefix << "\033[36m " << num << '\t' << "\033[0m";
+	  break;
+	}
+    }
+  else
+    {
+      cout << prefix << "\033[1;4;36m " << desc << '\t' << "\033[0m";
+    }
+
+}
+
+void
+UNOCard::showUNO_color (int color, string S, string prefix)
+{
+  int fixed = 11;
+  int lenS = S.length ();
+  switch (color)
+    {
+    case 'R':
+      cout << prefix << "\033[41;37m" << "===========" << "\033[0m" << endl;
+      cout << prefix << "\033[47;31m" << "#" << S << "\033[0m";
+      for (int i = 0; i < fixed - lenS - 2; i++)
+	cout << "\033[41;37m" << " " << "\033[0m";
+      cout << "\033[41;37m" << "#" << "\033[0m" << endl;
+      cout << prefix << "\033[41;37m" << "#         #" << "\033[0m" << endl;
+      cout << prefix << "\033[47;31m" << "#    " << S.c_str ()[0] << "    #"
+	<< "\033[0m" << endl;
+      cout << prefix << "\033[41;37m" << "#         #" << "\033[0m" << endl;
+      cout << prefix << "\033[41;37m" << "#" << "\033[0m";
+      for (int i = 0; i < fixed - lenS - 2; i++)
+	cout << "\033[41;37m" << " " << "\033[0m";
+      cout << "\033[47;31m" << S << "#" << "\033[0m" << endl;
+      cout << prefix << "\033[41;37m" << "===========" << "\033[0m" << endl;
+      break;
+    case 'Y':
+      cout << prefix << "\033[43;37m" << "===========" << "\033[0m" << endl;
+      cout << prefix << "\033[47;33m" << "#" << S << "\033[0m";
+      for (int i = 0; i < fixed - lenS - 2; i++)
+	cout << "\033[43;37m" << " " << "\033[0m";
+      cout << "\033[43;37m" << "#" << "\033[0m" << endl;
+      cout << prefix << "\033[43;37m" << "#         #" << "\033[0m" << endl;
+      cout << prefix << "\033[47;33m" << "#    " << S.c_str ()[0] << "    #"
+	<< "\033[0m" << endl;
+      cout << prefix << "\033[43;37m" << "#         #" << "\033[0m" << endl;
+      cout << prefix << "\033[43;37m" << "#" << "\033[0m";
+      for (int i = 0; i < fixed - lenS - 2; i++)
+	cout << "\033[43;37m" << " " << "\033[0m";
+      cout << "\033[47;33m" << S << "#" << "\033[0m" << endl;
+      cout << prefix << "\033[43;37m" << "===========" << "\033[0m" << endl;
+      break;
+    case 'B':
+      cout << prefix << "\033[44;37m" << "===========" << "\033[0m" << endl;
+      cout << prefix << "\033[47;34m" << "#" << S << "\033[0m";
+      for (int i = 0; i < fixed - lenS - 2; i++)
+	cout << "\033[44;37m" << " " << "\033[0m";
+      cout << "\033[44;37m" << "#" << "\033[0m" << endl;
+      cout << prefix << "\033[44;37m" << "#         #" << "\033[0m" << endl;
+      cout << prefix << "\033[47;34m" << "#    " << S.c_str ()[0] << "    #"
+	<< "\033[0m" << endl;
+      cout << prefix << "\033[44;37m" << "#         #" << "\033[0m" << endl;
+      cout << prefix << "\033[44;37m" << "#" << "\033[0m";
+      for (int i = 0; i < fixed - lenS - 2; i++)
+	cout << "\033[44;37m" << " " << "\033[0m";
+      cout << "\033[47;34m" << S << "#" << "\033[0m" << endl;
+      cout << prefix << "\033[44;37m" << "===========" << "\033[0m" << endl;
+      break;
+    case 'G':
+      cout << prefix << "\033[42;37m" << "===========" << "\033[0m" << endl;
+      cout << prefix << "\033[47;32m" << "#" << S << "\033[0m";
+      for (int i = 0; i < fixed - lenS - 2; i++)
+	cout << "\033[42;37m" << " " << "\033[0m";
+      cout << "\033[42;37m" << "#" << "\033[0m" << endl;
+      cout << prefix << "\033[42;37m" << "#         #" << "\033[0m" << endl;
+      cout << prefix << "\033[47;32m" << "#    " << S.c_str ()[0] << "    #"
+	<< "\033[0m" << endl;
+      cout << prefix << "\033[42;37m" << "#         #" << "\033[0m" << endl;
+      cout << prefix << "\033[42;37m" << "#" << "\033[0m";
+      for (int i = 0; i < fixed - lenS - 2; i++)
+	cout << "\033[42;37m" << " " << "\033[0m";
+      cout << "\033[47;32m" << S << "#" << "\033[0m" << endl;
+      cout << prefix << "\033[42;37m" << "===========" << "\033[0m" << endl;
+      break;
+    case -1:
+//line1
+      cout << prefix << "\033[42;37m" << "=====" << "\033[0m";
+      cout << "\033[43;37m" << "======" << "\033[0m" << endl;
+//line2
+      cout << prefix << "\033[42;37m" << "#" << S << "\033[0m";
+      for (int i = 0; i < fixed / 2 - lenS - 1; i++)
+	cout << "\033[42;37m" << " " << "\033[0m";
+      for (int i = 0; i < fixed / 2; i++)
+	cout << "\033[43;37m" << " " << "\033[0m";
+      cout << "\033[43;37m" << "#" << "\033[0m" << endl;
+//line3
+      cout << prefix << "\033[42;37m" << "#    " << "\033[0m";
+      cout << "\033[43;37m" << "     #" << "\033[0m" << endl;
+//line4      
+      if (S.length () == 3)
+	cout << prefix << "\033[47;31m" << "#   " << S << "   #" << "\033[0m"
+	  << endl;
+      else if (S.length () == 2)
+	cout << prefix << "\033[47;31m" << "#   " << S << "    #" << "\033[0m"
+	  << endl;
+      else
+	cout << prefix << "\033[47;31m" << "#    " << S.c_str ()[0] << "    #"
+	  << "\033[0m" << endl;
+//line5      
+      cout << prefix << "\033[44;37m" << "#    " << "\033[0m";
+      cout << "\033[41;37m" << "     #" << "\033[0m" << endl;
+//lin6      
+      cout << prefix << "\033[44;37m" << "#" << "\033[0m";
+      for (int i = 0; i < fixed / 2 - 1; i++)
+	cout << "\033[44;37m" << " " << "\033[0m";
+      for (int i = 0; i < fixed / 2 - lenS; i++)
+	cout << "\033[41;37m" << " " << "\033[0m";
+      cout << "\033[41;37m" << S << "#" << "\033[0m" << endl;
+//line7      
+      cout << prefix << "\033[44;37m" << "=====" << "\033[0m";
+      cout << "\033[41;37m" << "======" << "\033[0m" << endl;
+      break;
+    }
+  return;
+}
+
+void
+gui (UNOPlayer & A, UNOPlayer & B, UNOPlayer & C, UNOPlayer & D)
+{
+  system ("clear");
+  cout << "\033[1;4;31m " << "\t\t\tUNO:A--->B--->C--->D" << "\033[0m" <<
+    endl;
+  cout << "\033[1;4;33m " << "\t\t\tit's turn now" << "\033[0m" << endl;
+  g_last_unoCard.easyShow ();
+  cout << "\t\t\tC PLayer : Cards least" << C.unoCards.size ();
+  cout << endl;
+  C.last_unoCard.show ("\t\t\t");
+
+  cout << "\t\t\t\t\t\t\t" << "D PLayer : Cards least" << D.unoCards.size ();
+  cout << endl;
+  D.last_unoCard.show ("\t\t\t\t\t\t\t");
+
+  cout << "B PLayer : Cards least" << B.unoCards.size ();
+  cout << endl;
+  B.last_unoCard.show ();
+
+  cout << "\t\t\t" << "A PLayer:it's you";
+  cout << endl;
+  A.last_unoCard.show ("\t\t\t");
+  cout <<
+    "============================================================================================================="
+    << endl;
+  for (int i = 0; i < A.unoCards.size (); i++)
+    {
+      cout << "\t" << i;
+    }
+  cout << endl;
+  cout <<
+    "============================================================================================================="
+    << endl;
+  vector < UNOCard >::iterator it;
+  for (it = A.unoCards.begin (); it < A.unoCards.end (); it++)
+    {
+      if (it == A.unoCards.begin ())
+	it->easyShow ("\t");
+      else
+	it->easyShow ();
+    }
+  cout << endl;
+}
+
+int
+UNOPlayer::run (UNOCard & global_last_unoCard)
+{
+  int ret = 0;
+  int flag = 1;
+  vector < UNOCard >::iterator it;
+//如果上张牌是+2 +4 那就进行1之后就可以决定了,如果有+2/+4牌，就累加power 如果没有，就拿牌，然后active-->0即可
+/////////////***********************/////////////
+  while (1)
+    {
+//在1-3组中个人认为本应该是随机选择一张，但是由于在发牌的时候已经进行了随机化洗牌的操作，所以就用第一张找到的出去就可以了
+//1:先找同色+2或+4
+      for (it = unoCards.begin (); it != unoCards.end (); it++)
+	{
+//+2 & same color
+	  if (it->getNum () == 12
+	      && it->getColor () == global_last_unoCard.getColor ())
+	    {
+	      int temp = 0;
+	      if (global_last_unoCard.getNum () == 12
+		  && global_last_unoCard.getActive ())
+		temp = global_last_unoCard.getPower ();
+	      last_unoCard = *it;
+	      global_last_unoCard = *it;
+	      unoCards.erase (it);
+	      global_last_unoCard.setPower (temp + 2);
+
+	      return ret;
+	    }
+	  else if (it->getNum () == 14)
+	    {
+//+4
+	      last_unoCard = *it;
+	      srandom (time (NULL));
+	      int r = (int) random () % 4;
+//变色
+	      switch (r)
+		{
+		case 0:
+		  r = 'R';
+		  break;
+		case 1:
+		  r = 'Y';
+		  break;
+		case 2:
+		  r = 'B';
+		  break;
+		case 3:
+		  r = 'G';
+		  break;
+		}
+	      int temp = 0;
+	      if (global_last_unoCard.getNum () == 14
+		  && global_last_unoCard.getActive ())
+		temp = global_last_unoCard.getPower ();
+	      last_unoCard = *it;
+	      global_last_unoCard = *it;
+	      global_last_unoCard.setPower (temp + 4);
+	      global_last_unoCard.setColor (r);
+	      unoCards.erase (it);
+	      return ret;
+	    }
+	}
+/////////////////////**********************************//////////////
+//到了这里就证明没有+2 +4的合适牌，于是如果前面是+2 +4你就悲剧了
+      if ((global_last_unoCard.getNum () == 12
+	   || global_last_unoCard.getNum () == 14)
+	  && global_last_unoCard.getActive ())
+	{
+	  global_last_unoCard.setActive (0);
+	  for (int i = 0;
+	       i < global_last_unoCard.getPower () && !g_UNO.empty (); i++)
+	    {
+	      unoCards.push_back (*g_UNO.begin ());
+	      g_UNO.erase (g_UNO.begin ());
+	    }
+	  break;
+	}
+//2:再找reverse, skip, wild
+      for (it = unoCards.begin (); it != unoCards.end (); it++)
+	{
+	  if (((it->getNum () == 10) || (it->getNum () == 11))
+	      && it->getColor () == global_last_unoCard.getColor ())
+	    {
+	      last_unoCard = *it;
+	      global_last_unoCard = *it;
+	      unoCards.erase (it);
+	      return ret;
+	    }
+	  else if (it->getNum () == 13)
+	    {
+	      last_unoCard = *it;
+	      srandom (time (NULL));
+	      int r = (int) random % 4;
+//变色
+	      switch (r)
+		{
+		case 0:
+		  r = 'R';
+		  break;
+		case 1:
+		  r = 'Y';
+		  break;
+		case 2:
+		  r = 'B';
+		  break;
+		case 3:
+		  r = 'G';
+		  break;
+		}
+	      global_last_unoCard = *it;
+	      global_last_unoCard.setColor (r);
+	      unoCards.erase (it);
+	      return ret;
+	    }
+	}
+//3:接着找同色或者同数值的牌,找到即出
+      for (it = unoCards.begin (); it != unoCards.end (); it++)
+	{
+	  if (it->getNum () ==
+	      global_last_unoCard.getNum () | it->getColor () ==
+	      global_last_unoCard.getColor ())
+	    {
+	      last_unoCard = *it;
+	      global_last_unoCard = *it;
+	      unoCards.erase (it);
+	      return ret;
+	    }
+	}
+//4：都没有，抓牌，这张牌可以出否
+//重复1-3
+      if (!flag)
+	break;
+      unoCards.push_back (*g_UNO.begin ());
+      g_UNO.erase (g_UNO.begin ());
+      flag = 0;
+    }
+//5:1-4都没有 错过这一轮搂。。。。
+  ret = 1;
+  return ret;
+}
